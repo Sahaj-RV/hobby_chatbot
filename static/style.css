@@ -169,6 +169,7 @@ body.dark pre{background:#0D0B18}
 .dot:nth-child(3){animation-delay:.4s}
 @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
 
 /* hobby result cards */
 .result-wrap{display:flex;flex-direction:column;gap:9px;max-width:540px;margin-top:4px}
@@ -206,7 +207,7 @@ body.dark pre{background:#0D0B18}
 .send-btn:disabled{opacity:.35;cursor:not-allowed}
 .voice-btn{width:42px;height:42px;background:#f0f0f0;border:1px solid var(--border);border-radius:var(--r8);color:#666;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
 .voice-btn:hover{background:#e8e8e8}
-.voice-btn.active{background:#ff6b6b;color:#fff}
+.voice-btn.active{background:#ff6b6b;color:#fff;animation:pulse 1.5s infinite}
 
 /* MODALS */
 .modal-bg{position:fixed;inset:0;background:rgba(15,14,26,.5);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:80}

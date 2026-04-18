@@ -572,26 +572,45 @@ function initSpeechRecognition() {
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   S.recognition = new SpeechRecognition();
-  S.recognition.continuous = false;
-  S.recognition.interimResults = false;
+  S.recognition.continuous = true;
+  S.recognition.interimResults = true;
   S.recognition.lang = 'en-US';
+
+  let finalTranscript = '';
 
   S.recognition.onstart = () => {
     S.isListening = true;
     $('voice-btn').classList.add('active');
-    $('msg-input').placeholder = 'Listening...';
+    $('msg-input').placeholder = 'Listening... (click mic again to stop)';
+    finalTranscript = '';
   };
 
   S.recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript;
-    $('msg-input').value = transcript;
+    let interimTranscript = '';
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += transcript;
+      } else {
+        interimTranscript += transcript;
+      }
+    }
+
+    // Show final transcript + interim results
+    $('msg-input').value = finalTranscript + interimTranscript;
     autoGrow($('msg-input'));
-    stopVoiceInput();
   };
 
   S.recognition.onerror = (event) => {
     console.error('Speech recognition error:', event.error);
-    toast('Voice input failed. Try again.');
+    let errorMsg = 'Voice input failed.';
+    if (event.error === 'not-allowed') {
+      errorMsg = 'Microphone access denied. Please allow microphone access.';
+    } else if (event.error === 'no-speech') {
+      errorMsg = 'No speech detected. Try speaking louder.';
+    }
+    toast(errorMsg);
     stopVoiceInput();
   };
 
@@ -605,6 +624,7 @@ function startVoiceInput() {
   try {
     S.recognition.start();
   } catch (e) {
+    console.error('Failed to start voice recognition:', e);
     toast('Could not start voice input');
   }
 }
