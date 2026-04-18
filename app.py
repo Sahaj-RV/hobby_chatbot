@@ -43,12 +43,11 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "hobbybot-secret-change-me")
 
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
-app.config["SESSION_COOKIE_HTTPONLY"]    = True
 
-# 🔥 IMPORTANT FOR RENDER (HTTPS)
+# 🔥 ADD THESE (CRITICAL FOR RENDER)
 app.config["SESSION_COOKIE_SECURE"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
-
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 # Configure AI models (Claude > Grok > Gemini fallback)
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
 gemini_model = genai.GenerativeModel(

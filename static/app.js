@@ -724,7 +724,10 @@ async function api(url, body) {
   const opts = body !== undefined
     ? { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) }
     : {};
-  return (await fetch(url, opts)).json();
+  return (await fetch(url, {
+    ...opts,
+    credentials: "include"   // 🔥 REQUIRED
+  })).json();
 }
 async function apidel(url) { return (await fetch(url,{method:"DELETE"})).json(); }
 
