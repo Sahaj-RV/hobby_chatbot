@@ -10,6 +10,9 @@ from datetime import timedelta
 from flask import Flask, render_template, request, jsonify, session, Response, stream_with_context
 from dotenv import load_dotenv
 import google.generativeai as genai
+from database import init_db
+
+init_db()
 
 from chatbot import ConversationManager, QUESTIONS
 from email_otp import send_otp_email, verify_otp
