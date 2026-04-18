@@ -143,6 +143,8 @@
         </div>
         <div class="bar-actions">
           <button class="icon-btn" onclick="exportPDF()"    title="Export PDF">📄</button>
+          <button class="icon-btn" onclick="openHabitTracker()" title="Daily habit tracker">📅</button>
+          <button class="icon-btn" onclick="openIncomeCalculator()" title="Income calculator">💰</button>
           <button class="icon-btn" onclick="shareProfile()" title="Share profile">🔗</button>
           <button class="icon-btn" onclick="initiateSave()" title="Save">💾</button>
           <button class="icon-btn" onclick="deleteChat()"   title="Delete">🗑</button>
@@ -196,6 +198,22 @@
   <div class="modal-box modal-wide" onclick="event.stopPropagation()">
     <button class="modal-x" onclick="closeHobbyModal()">✕</button>
     <div id="hobby-content"></div>
+  </div>
+</div>
+
+<!-- DAILY HABIT TRACKER MODAL -->
+<div class="modal-bg hidden" id="habit-modal" onclick="closeHabitModal(event)">
+  <div class="modal-box modal-wide" onclick="event.stopPropagation()">
+    <button class="modal-x" onclick="closeHabitModal()">✕</button>
+    <div id="habit-content"></div>
+  </div>
+</div>
+
+<!-- INCOME CALCULATOR MODAL -->
+<div class="modal-bg hidden" id="income-modal" onclick="closeIncomeModal(event)">
+  <div class="modal-box modal-wide" onclick="event.stopPropagation()">
+    <button class="modal-x" onclick="closeIncomeModal()">✕</button>
+    <div id="income-content"></div>
   </div>
 </div>
 

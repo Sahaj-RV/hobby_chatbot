@@ -8,6 +8,7 @@
 const S = {
   email: null, userId: null,
   chats: [], activeChatId: null,
+  activeChatProfile: null,
   quizActive: false, currentQ: null,
   isStreaming: false,   // blocks sending while Claude is mid-response
 };
@@ -157,6 +158,7 @@ async function startNewChat() {
   const r = await api("/api/chats", {});
   S.chats.unshift(r.chat);
   S.activeChatId = r.chat.id;
+  S.activeChatProfile = null;
   S.quizActive   = true;
   S.currentQ     = r.first_question;
 
@@ -175,6 +177,7 @@ async function openChat(chatId) {
   const r = await api(`/api/chats/${chatId}/messages`);
   S.quizActive = !!r.quiz_state;
   S.currentQ   = r.quiz_state;
+  S.activeChatProfile = r.chat.profile ? JSON.parse(r.chat.profile) : null;
 
   showChatView(r.chat);
   clearMsgs();
@@ -512,6 +515,128 @@ function clearMsgs() {
   $("opts-tray").innerHTML = "";
   $("hints-row").innerHTML = "";
 }
+
+function getHabitKey() {
+  return `hobbybot-habit-${S.userId || 'guest'}`;
+}
+
+function loadHabitState() {
+  const raw = localStorage.getItem(getHabitKey());
+  if (!raw) return { habit: '', streak: 0, lastCompleted: null };
+  try { return JSON.parse(raw); } catch { return { habit: '', streak: 0, lastCompleted: null }; }
+}
+
+function saveHabitState(state) {
+  localStorage.setItem(getHabitKey(), JSON.stringify(state));
+}
+
+function closeHabitModal(evt) {
+  if (evt && evt.target !== evt.currentTarget) return;
+  $("habit-modal").classList.add("hidden");
+}
+
+function closeIncomeModal(evt) {
+  if (evt && evt.target !== evt.currentTarget) return;
+  $("income-modal").classList.add("hidden");
+}
+
+function openHabitTracker() {
+  if (!S.userId) { toast('Sign in to use the habit tracker.'); return; }
+  const profile = S.activeChatProfile || {};
+  const state = loadHabitState();
+  const today = new Date().toISOString().slice(0, 10);
+  const completedToday = state.lastCompleted === today;
+  const suggested = profile.goal === 'side_hustle' ? 'Spend 15 minutes on your side hustle habit' : profile.goal === 'career' ? 'Practice one career-building habit today' : profile.goal === 'learn' ? 'Build one new skill step today' : 'Do one small hobby task today';
+  const habitLabel = state.habit || suggested;
+  const streak = state.streak || 0;
+  const completedLabel = completedToday ? 'Yes — great job!' : 'Not yet';
+
+  $("habit-content").innerHTML = `
+    <div style="font-size:26px;margin-bottom:8px">📅 Daily habit tracker</div>
+    <p class="modal-sub">Keep a simple daily habit and build momentum with a visible streak.</p>
+    <div class="field-row">
+      <label class="field-label">Habit name</label>
+      <input id="habit-name-input" class="field-input" value="${esc(habitLabel)}" placeholder="e.g. Practice 15 minutes of guitar" />
+    </div>
+    <div class="field-row">
+      <div class="field-label">Today's completed?</div>
+      <div style="font-size:14px;color:var(--muted);">${esc(completedLabel)}</div>
+    </div>
+    <div class="field-row">
+      <div class="field-label">Current streak</div>
+      <div style="font-size:14px;color:var(--muted);">${streak} day${streak===1?'':'s'}</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cta" onclick="saveHabitName()">Save habit</button>
+      <button class="btn-cta" onclick="completeHabit()">Mark complete</button>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-top:12px;">Tip: check in every day to keep your streak alive.</p>
+  `;
+  $("habit-modal").classList.remove("hidden");
+}
+
+function saveHabitName() {
+  const input = $("habit-name-input");
+  if (!input) return;
+  const habit = input.value.trim();
+  if (!habit) { toast('Enter a habit name first.'); return; }
+  const state = loadHabitState();
+  state.habit = habit;
+  saveHabitState(state);
+  toast('Daily habit saved.');
+}
+
+function completeHabit() {
+  const input = $("habit-name-input");
+  const habit = input?.value.trim() || '';
+  if (!habit) { toast('Enter a habit name first.'); return; }
+  const state = loadHabitState();
+  const today = new Date().toISOString().slice(0, 10);
+  if (state.lastCompleted === today) { toast('Already completed today.'); return; }
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  state.habit = habit;
+  state.streak = state.lastCompleted === yesterday ? (state.streak || 0) + 1 : 1;
+  state.lastCompleted = today;
+  saveHabitState(state);
+  toast(`Habit completed! Streak: ${state.streak} day${state.streak===1?'':'s'}.`);
+  openHabitTracker();
+}
+
+function openIncomeCalculator() {
+  const profile = S.activeChatProfile || {};
+  const goal = profile.goal ? profile.goal.replace('_', ' ') : 'hobby progress';
+  const goalLine = profile.goal === 'side_hustle' ? 'This supports your side hustle goal directly.' : `Your current goal is ${esc(goal)}.`;
+  $("income-content").innerHTML = `
+    <div style="font-size:26px;margin-bottom:8px">💰 Income calculator</div>
+    <p class="modal-sub">Estimate how much your hobby time can earn if you turn it into a side hustle.</p>
+    <div class="field-row"><label class="field-label">Goal context</label><div style="font-size:14px;color:var(--muted);">${esc(goalLine)}</div></div>
+    <div class="field-row"><label class="field-label">Hourly rate</label><input id="income-hourly" class="field-input" type="number" min="0" step="0.01" placeholder="e.g. 25" /></div>
+    <div class="field-row"><label class="field-label">Hours per week</label><input id="income-hours" class="field-input" type="number" min="0" step="0.5" placeholder="e.g. 10" /></div>
+    <div class="field-row"><label class="field-label">Weeks per month</label><input id="income-weeks" class="field-input" type="number" min="1" step="1" value="4" /></div>
+    <div class="modal-actions"><button class="btn-cta" onclick="calculateIncome()">Calculate</button></div>
+    <div id="income-results" style="margin-top:14px;font-size:14px;color:var(--muted);"></div>
+  `;
+  $("income-modal").classList.remove("hidden");
+}
+
+function calculateIncome() {
+  const hourly = parseFloat($("income-hourly").value);
+  const hours = parseFloat($("income-hours").value);
+  const weeks  = parseFloat($("income-weeks").value);
+  const resultsEl = $("income-results");
+  if (Number.isNaN(hourly) || Number.isNaN(hours) || Number.isNaN(weeks) || hourly <= 0 || hours <= 0 || weeks <= 0) {
+    resultsEl.textContent = 'Enter valid numbers for rate, hours, and weeks.';
+    return;
+  }
+  const monthly = hourly * hours * weeks;
+  const yearly  = monthly * 12;
+  resultsEl.innerHTML = `
+    <div><strong>Estimated monthly income:</strong> $${monthly.toFixed(2)}</div>
+    <div><strong>Estimated annual income:</strong> $${yearly.toFixed(2)}</div>
+    <div style="margin-top:8px;color:var(--muted);">Use this to compare hobby time vs other priorities and build a stronger side hustle plan.</div>
+  `;
+}
+
 
 function setHints() {
   const el = $("hints-row"); el.innerHTML = "";
