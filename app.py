@@ -617,6 +617,80 @@ def public_profile(token):
         token=token
     )
 
+# ── MOOD-BASED SUGGESTIONS ─────────────────────────────────────────────────────
+@app.route("/api/mood-suggestions", methods=["POST"])
+def mood_suggestions():
+    user = require_auth()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    body = request.get_json(silent=True) or {}
+    mood = body.get("mood", "").strip()
+    profile = body.get("profile", {})
+
+    if not mood:
+        return jsonify({"error": "Mood required"}), 400
+
+    # Build prompt for mood-based suggestions
+    prompt = f"""Based on the user's current mood of "{mood}", suggest 3-5 hobbies that would be perfect for this emotional state.
+
+User profile context: {json.dumps(profile) if profile else 'No profile available'}
+
+For each suggestion, provide:
+- name: The hobby name
+- reason: Why this hobby fits their current mood (2-3 sentences)
+
+Focus on hobbies that can help with their mood - if they're stressed, suggest calming activities; if energetic, suggest active pursuits; if bored, suggest engaging activities.
+
+Return as JSON array of objects with 'name' and 'reason' fields."""
+
+    try:
+        response_text = generate_ai_response(prompt, system_msg="You are a mood-based hobby recommender. Return only valid JSON.")
+        suggestions = json.loads(response_text.strip())
+        return jsonify({"suggestions": suggestions})
+    except Exception as e:
+        print(f"Mood suggestions error: {e}")
+        return jsonify({"error": "Failed to generate suggestions"}), 500
+
+
+# ── 30/60/90 DAY ROADMAP ─────────────────────────────────────────────────────
+@app.route("/api/generate-roadmap", methods=["POST"])
+def generate_roadmap():
+    user = require_auth()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    body = request.get_json(silent=True) or {}
+    profile = body.get("profile", {})
+
+    if not profile:
+        return jsonify({"error": "Profile required"}), 400
+
+    # Build structured roadmap prompt
+    prompt = f"""Create a detailed 30/60/90 day roadmap for turning this hobby into a sustainable habit and potential income source.
+
+User profile: {json.dumps(profile)}
+
+Structure the response as a JSON object with these exact keys:
+- thirty_days: Actionable steps for the first 30 days (focus on building habits, learning basics, consistency)
+- sixty_days: Steps for days 31-60 (focus on improvement, community building, monetization exploration)
+- ninety_days: Steps for days 61-90 (focus on scaling, income generation, long-term sustainability)
+
+Each phase should include:
+- 4-6 specific, actionable steps
+- Realistic time commitments
+- Measurable milestones
+- Income potential considerations where appropriate
+
+Make it practical, encouraging, and tailored to their specific hobby and goals."""
+
+    try:
+        response_text = generate_ai_response(prompt, system_msg="You are a hobby development coach. Return only valid JSON with the specified structure.")
+        roadmap = json.loads(response_text.strip())
+        return jsonify({"roadmap": roadmap})
+    except Exception as e:
+        print(f"Roadmap generation error: {e}")
+        return jsonify({"error": "Failed to generate roadmap"}), 500
 
 # ── RUN ───────────────────────────────────────
 if __name__ == "__main__":

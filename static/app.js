@@ -11,6 +11,8 @@ const S = {
   activeChatProfile: null,
   quizActive: false, currentQ: null,
   isStreaming: false,   // blocks sending while Claude is mid-response
+  isListening: false,   // voice input state
+  recognition: null,    // speech recognition instance
 };
 
 const HINTS = [
@@ -538,6 +540,175 @@ function closeHabitModal(evt) {
 function closeIncomeModal(evt) {
   if (evt && evt.target !== evt.currentTarget) return;
   $("income-modal").classList.add("hidden");
+}
+
+function closeMoodModal(evt) {
+  if (evt && evt.target !== evt.currentTarget) return;
+  $("mood-modal").classList.add("hidden");
+}
+
+function closeRoadmapModal(evt) {
+  if (evt && evt.target !== evt.currentTarget) return;
+  $("roadmap-modal").classList.add("hidden");
+}
+
+function toggleVoiceInput() {
+  if (!S.recognition) {
+    initSpeechRecognition();
+  }
+
+  if (S.isListening) {
+    stopVoiceInput();
+  } else {
+    startVoiceInput();
+  }
+}
+
+function initSpeechRecognition() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    toast('Voice input not supported in this browser');
+    return;
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  S.recognition = new SpeechRecognition();
+  S.recognition.continuous = false;
+  S.recognition.interimResults = false;
+  S.recognition.lang = 'en-US';
+
+  S.recognition.onstart = () => {
+    S.isListening = true;
+    $('voice-btn').classList.add('active');
+    $('msg-input').placeholder = 'Listening...';
+  };
+
+  S.recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    $('msg-input').value = transcript;
+    autoGrow($('msg-input'));
+    stopVoiceInput();
+  };
+
+  S.recognition.onerror = (event) => {
+    console.error('Speech recognition error:', event.error);
+    toast('Voice input failed. Try again.');
+    stopVoiceInput();
+  };
+
+  S.recognition.onend = () => {
+    stopVoiceInput();
+  };
+}
+
+function startVoiceInput() {
+  if (S.isStreaming) return;
+  try {
+    S.recognition.start();
+  } catch (e) {
+    toast('Could not start voice input');
+  }
+}
+
+function stopVoiceInput() {
+  S.isListening = false;
+  $('voice-btn').classList.remove('active');
+  $('msg-input').placeholder = 'Ask anything — or click an option above…';
+
+  if (S.recognition) {
+    S.recognition.stop();
+  }
+}
+
+function openMoodSuggestions() {
+  if (!S.userId) { toast('Sign in to use mood-based suggestions.'); return; }
+  const profile = S.activeChatProfile || {};
+
+  $('mood-content').innerHTML = `
+    <div style="font-size:26px;margin-bottom:8px">😊 Mood-based suggestions</div>
+    <p class="modal-sub">Tell us how you're feeling and we'll suggest hobbies that match your current mood.</p>
+    <div class="mood-grid">
+      <button class="mood-btn" onclick="selectMood('energetic')">⚡ Energetic</button>
+      <button class="mood-btn" onclick="selectMood('relaxed')">😌 Relaxed</button>
+      <button class="mood-btn" onclick="selectMood('creative')">🎨 Creative</button>
+      <button class="mood-btn" onclick="selectMood('adventurous')">🗺️ Adventurous</button>
+      <button class="mood-btn" onclick="selectMood('social')">👥 Social</button>
+      <button class="mood-btn" onclick="selectMood('focused')">🎯 Focused</button>
+      <button class="mood-btn" onclick="selectMood('stressed')">😰 Stressed</button>
+      <button class="mood-btn" onclick="selectMood('bored')">😴 Bored</button>
+    </div>
+    <div id="mood-results" style="margin-top:16px;"></div>
+  `;
+  $('mood-modal').classList.remove('hidden');
+}
+
+async function selectMood(mood) {
+  const resultsEl = $('mood-results');
+  resultsEl.innerHTML = '<div style="text-align:center;padding:20px;">Finding suggestions...</div>';
+
+  try {
+    const response = await api('/api/mood-suggestions', { mood, profile: S.activeChatProfile });
+    if (response.suggestions) {
+      resultsEl.innerHTML = `
+        <div style="font-size:16px;font-weight:600;margin-bottom:12px">Suggestions for when you're feeling ${mood}:</div>
+        ${response.suggestions.map(s => `
+          <div class="mood-suggestion">
+            <div class="mood-suggestion-name">${esc(s.name)}</div>
+            <div class="mood-suggestion-reason">${esc(s.reason)}</div>
+          </div>
+        `).join('')}
+      `;
+    } else {
+      resultsEl.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">No suggestions found for this mood.</div>';
+    }
+  } catch (e) {
+    resultsEl.innerHTML = '<div style="color:#ef4444;text-align:center;padding:20px;">Failed to get suggestions. Try again.</div>';
+  }
+}
+
+function openRoadmap() {
+  if (!S.userId) { toast('Sign in to generate a roadmap.'); return; }
+  if (!S.activeChatProfile) { toast('Complete the quiz first to get a personalized roadmap.'); return; }
+
+  $('roadmap-content').innerHTML = `
+    <div style="font-size:26px;margin-bottom:8px">📋 30/60/90 Day Roadmap</div>
+    <p class="modal-sub">Get a structured plan to turn your hobby into a sustainable habit and potentially a side income.</p>
+    <div class="roadmap-controls">
+      <button class="btn-cta" onclick="generateRoadmap()">Generate Roadmap</button>
+    </div>
+    <div id="roadmap-results" style="margin-top:16px;"></div>
+  `;
+  $('roadmap-modal').classList.remove('hidden');
+}
+
+async function generateRoadmap() {
+  const resultsEl = $('roadmap-results');
+  resultsEl.innerHTML = '<div style="text-align:center;padding:20px;">Generating your roadmap...</div>';
+
+  try {
+    const response = await api('/api/generate-roadmap', { profile: S.activeChatProfile });
+    if (response.roadmap) {
+      resultsEl.innerHTML = `
+        <div class="roadmap-container">
+          <div class="roadmap-phase">
+            <div class="roadmap-phase-title">📅 30 Days: Foundation</div>
+            <div class="roadmap-phase-content">${response.roadmap.thirty_days}</div>
+          </div>
+          <div class="roadmap-phase">
+            <div class="roadmap-phase-title">🚀 60 Days: Growth</div>
+            <div class="roadmap-phase-content">${response.roadmap.sixty_days}</div>
+          </div>
+          <div class="roadmap-phase">
+            <div class="roadmap-phase-title">💰 90 Days: Monetization</div>
+            <div class="roadmap-phase-content">${response.roadmap.ninety_days}</div>
+          </div>
+        </div>
+      `;
+    } else {
+      resultsEl.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">Could not generate roadmap. Try again.</div>';
+    }
+  } catch (e) {
+    resultsEl.innerHTML = '<div style="color:#ef4444;text-align:center;padding:20px;">Failed to generate roadmap. Try again.</div>';
+  }
 }
 
 function openHabitTracker() {

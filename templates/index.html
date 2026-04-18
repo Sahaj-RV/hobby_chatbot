@@ -144,6 +144,8 @@
         </div>
         <div class="bar-actions">
           <button class="icon-btn" onclick="exportPDF()"    title="Export PDF">📄</button>
+          <button class="icon-btn" onclick="openMoodSuggestions()" title="Mood-based suggestions">😊</button>
+          <button class="icon-btn" onclick="openRoadmap()" title="30/60/90 day roadmap">📋</button>
           <button class="icon-btn" onclick="openHabitTracker()" title="Daily habit tracker">📅</button>
           <button class="icon-btn" onclick="openIncomeCalculator()" title="Income calculator">💰</button>
           <button class="icon-btn" onclick="shareProfile()" title="Share profile">🔗</button>
@@ -167,6 +169,9 @@
             rows="1"
             onkeydown="onKey(event)"
             oninput="autoGrow(this)"></textarea>
+          <button class="voice-btn" id="voice-btn" onclick="toggleVoiceInput()" title="Voice input">
+            🎤
+          </button>
           <button class="send-btn" id="send-msg-btn" onclick="sendMessage()">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M8 13V3M3 8l5-5 5 5" stroke="currentColor" stroke-width="2"
@@ -215,6 +220,22 @@
   <div class="modal-box modal-wide" onclick="event.stopPropagation()">
     <button class="modal-x" onclick="closeIncomeModal()">✕</button>
     <div id="income-content"></div>
+  </div>
+</div>
+
+<!-- MOOD-BASED SUGGESTIONS MODAL -->
+<div class="modal-bg hidden" id="mood-modal" onclick="closeMoodModal(event)">
+  <div class="modal-box modal-wide" onclick="event.stopPropagation()">
+    <button class="modal-x" onclick="closeMoodModal()">✕</button>
+    <div id="mood-content"></div>
+  </div>
+</div>
+
+<!-- ROADMAP MODAL -->
+<div class="modal-bg hidden" id="roadmap-modal" onclick="closeRoadmapModal(event)">
+  <div class="modal-box modal-wide" onclick="event.stopPropagation()">
+    <button class="modal-x" onclick="closeRoadmapModal()">✕</button>
+    <div id="roadmap-content"></div>
   </div>
 </div>
 

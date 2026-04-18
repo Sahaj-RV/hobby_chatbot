@@ -204,6 +204,9 @@ body.dark pre{background:#0D0B18}
 .send-btn{width:42px;height:42px;background:var(--grad);border:none;border-radius:var(--r8);color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s,transform .1s}
 .send-btn:hover:not(:disabled){opacity:.88;transform:translateY(-1px)}
 .send-btn:disabled{opacity:.35;cursor:not-allowed}
+.voice-btn{width:42px;height:42px;background:#f0f0f0;border:1px solid var(--border);border-radius:var(--r8);color:#666;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.voice-btn:hover{background:#e8e8e8}
+.voice-btn.active{background:#ff6b6b;color:#fff}
 
 /* MODALS */
 .modal-bg{position:fixed;inset:0;background:rgba(15,14,26,.5);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:1rem;z-index:80}
@@ -237,3 +240,16 @@ body.dark .share-box{background:#1A1825;border-color:#2A2740}
 body.dark .share-input{background:#13111F;border-color:#2A2740;color:var(--text)}
 body.dark .login-page{background:#13111F}
 body.dark .auth-card{box-shadow:0 20px 60px rgba(124,58,237,.15)}
+
+/* MOOD AND ROADMAP STYLES */
+.mood-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:16px}
+.mood-btn{width:100%;padding:12px 8px;font-size:14px;border:1px solid var(--border);border-radius:var(--r8);background:var(--bg);color:var(--text);cursor:pointer;transition:all .15s;text-align:center}
+.mood-btn:hover{border-color:var(--p1);background:rgba(124,58,237,.05)}
+.mood-suggestion{border:1px solid var(--border);border-radius:var(--r8);padding:12px;margin-bottom:8px}
+.mood-suggestion-name{font-weight:600;margin-bottom:4px}
+.mood-suggestion-reason{font-size:13px;color:var(--muted)}
+.roadmap-controls{margin-top:16px}
+.roadmap-container{display:flex;flex-direction:column;gap:16px;margin-top:16px}
+.roadmap-phase{border:1px solid var(--border);border-radius:var(--r12);padding:16px}
+.roadmap-phase-title{font-size:16px;font-weight:600;margin-bottom:8px;color:var(--p1)}
+.roadmap-phase-content{font-size:14px;line-height:1.6}
