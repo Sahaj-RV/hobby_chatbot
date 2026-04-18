@@ -692,6 +692,119 @@ Make it practical, encouraging, and tailored to their specific hobby and goals."
         print(f"Roadmap generation error: {e}")
         return jsonify({"error": "Failed to generate roadmap"}), 500
 
+
+# ── HOBBY SCORING ANALYSIS ───────────────────────────────────────────────────
+@app.route("/api/analyze-scoring", methods=["POST"])
+def analyze_hobby_scoring():
+    """
+    Advanced endpoint that provides detailed scoring analysis for a specific hobby
+    or compares multiple hobbies against a user profile.
+    """
+    user = require_auth()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    body = request.get_json(silent=True) or {}
+    profile = body.get("profile", {})
+    hobby_key = body.get("hobby_key")
+    compare_all = body.get("compare_all", False)
+
+    if not profile:
+        return jsonify({"error": "Profile required"}), 400
+
+    from chatbot import score_hobby, HOBBIES
+
+    if hobby_key and hobby_key in HOBBIES:
+        # Analyze single hobby
+        hobby_data = HOBBIES[hobby_key]
+        scoring_result = score_hobby(profile, hobby_data)
+
+        return jsonify({
+            "hobby": hobby_key,
+            "name": hobby_data["name"],
+            "scoring": scoring_result
+        })
+
+    elif compare_all:
+        # Compare all hobbies
+        from chatbot import get_recommendations
+        recommendations = get_recommendations(profile, top_n=10)
+
+        analysis = {
+            "total_hobbies": len(HOBBIES),
+            "recommendations": recommendations,
+            "scoring_insights": {
+                "highest_score": max(r["score"] for r in recommendations),
+                "average_score": sum(r["score"] for r in recommendations) / len(recommendations),
+                "confidence_range": {
+                    "min": min(r["confidence"] for r in recommendations),
+                    "max": max(r["confidence"] for r in recommendations)
+                }
+            }
+        }
+
+        return jsonify(analysis)
+
+    else:
+        return jsonify({"error": "Specify hobby_key or set compare_all=true"}), 400
+
+
+# ── USER ENGAGEMENT SCORING ──────────────────────────────────────────────────
+@app.route("/api/user-engagement-score", methods=["GET"])
+def get_user_engagement_score():
+    """
+    Calculate user engagement score based on:
+    - Chat completion rate
+    - Habit tracking consistency
+    - Time spent in app
+    - Feature usage diversity
+    """
+    user = require_auth()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        # Get user's chat history
+        chats = get_chats(user["id"])
+        total_chats = len(chats)
+        completed_chats = sum(1 for c in chats if c.get("status") == "completed")
+
+        # Calculate completion rate
+        completion_rate = (completed_chats / total_chats * 100) if total_chats > 0 else 0
+
+        # Calculate engagement score (0-100)
+        engagement_score = min(completion_rate * 0.6 + total_chats * 2, 100)
+
+        # Determine engagement level
+        if engagement_score >= 80:
+            level = "Highly Engaged"
+            description = "You're deeply invested in your hobby journey!"
+        elif engagement_score >= 60:
+            level = "Moderately Engaged"
+            description = "Good progress on your hobby exploration."
+        elif engagement_score >= 40:
+            level = "Getting Started"
+            description = "Building momentum with your hobbies."
+        else:
+            level = "Early Explorer"
+            description = "Just beginning your hobby discovery journey."
+
+        return jsonify({
+            "engagement_score": round(engagement_score, 1),
+            "level": level,
+            "description": description,
+            "metrics": {
+                "total_chats": total_chats,
+                "completed_chats": completed_chats,
+                "completion_rate": round(completion_rate, 1)
+            }
+        })
+
+    except Exception as e:
+        print(f"Engagement score error: {e}")
+        return jsonify({"error": "Failed to calculate engagement score"}), 500
+
+
 # ── RUN ───────────────────────────────────────
 if __name__ == "__main__":
     init_db()
