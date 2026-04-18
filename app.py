@@ -48,6 +48,118 @@ app.secret_key = os.environ.get("SECRET_KEY", "hobbybot-secret-change-me")
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
 
 # 🔥 ADD THESE (CRITICAL FOR RENDER)
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
+gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+
+
+# ── AI RESPONSE GENERATOR ─────────────────────────────────────────────────────
+def generate_ai_response(prompt: str, system_msg: str = None, max_tokens: int = 1024) -> str:
+    """
+    Generate AI response using Claude > Grok > Gemini fallback.
+    Returns the full response text.
+    """
+    messages = []
+    if system_msg:
+        messages.append({"role": "system", "content": system_msg})
+    messages.append({"role": "user", "content": prompt})
+
+    try:
+        if use_claude:
+            # Try Claude first
+            try:
+                response = claude_client.messages.create(
+                    model="claude-3-haiku-20240307",
+                    max_tokens=max_tokens,
+                    temperature=0.7,
+                    messages=messages
+                )
+                return response.content[0].text
+            except Exception as claude_error:
+                if "rate limit" in str(claude_error).lower() or "429" in str(claude_error):
+                    # Claude rate limited, try Grok
+                    if use_groq:
+                        try:
+                            response = groq_client.chat.completions.create(
+                                model="llama-3.1-8b-instant",
+                                messages=messages,
+                                max_tokens=max_tokens,
+                                temperature=0.7
+                            )
+                            return response.choices[0].message.content
+                        except Exception:
+                            # Grok failed, fall back to Gemini
+                            pass
+                    # Fall back to Gemini
+                    gemini_messages = []
+                    for msg in messages:
+                        if msg["role"] == "system":
+                            gemini_messages.append({"role": "user", "parts": [msg["content"]]})
+                            gemini_messages.append({"role": "model", "parts": ["I understand."]})
+                        else:
+                            role = "user" if msg["role"] == "user" else "model"
+                            gemini_messages.append({"role": role, "parts": [msg["content"]]})
+                    chat_session = gemini_model.start_chat(history=gemini_messages[:-1])
+                    response = chat_session.send_message(gemini_messages[-1]["parts"][0])
+                    return response.text
+                else:
+                    raise claude_error
+        elif use_groq:
+            # Try Grok
+            try:
+                response = groq_client.chat.completions.create(
+                    model="llama-3.1-8b-instant",
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=0.7
+                )
+                return response.choices[0].message.content
+            except Exception as groq_error:
+                if "rate limit" in str(groq_error).lower() or "429" in str(groq_error):
+                    # Grok rate limited, fall back to Gemini
+                    gemini_messages = []
+                    for msg in messages:
+                        if msg["role"] == "system":
+                            gemini_messages.append({"role": "user", "parts": [msg["content"]]})
+                            gemini_messages.append({"role": "model", "parts": ["I understand."]})
+                        else:
+                            role = "user" if msg["role"] == "user" else "model"
+                            gemini_messages.append({"role": role, "parts": [msg["content"]]})
+                    chat_session = gemini_model.start_chat(history=gemini_messages[:-1])
+                    response = chat_session.send_message(gemini_messages[-1]["parts"][0])
+                    return response.text
+                else:
+                    raise groq_error
+        else:
+            # Use Gemini
+            gemini_messages = []
+            for msg in messages:
+                if msg["role"] == "system":
+                    gemini_messages.append({"role": "user", "parts": [msg["content"]]})
+                    gemini_messages.append({"role": "model", "parts": ["I understand."]})
+                else:
+                    role = "user" if msg["role"] == "user" else "model"
+                    gemini_messages.append({"role": role, "parts": [msg["content"]]})
+
+            chat_session = gemini_model.start_chat(history=gemini_messages[:-1])
+            response = chat_session.send_message(gemini_messages[-1]["parts"][0])
+            return response.text
+
+    except Exception as exc:
+        err_msg = str(exc)
+        print(f"[AI ERROR] {err_msg}", file=sys.stderr)
+
+        # Give a user-friendly message for common errors
+        if "API_KEY" in err_msg or "api key" in err_msg.lower():
+            raise Exception("API key missing or invalid. Check your API keys in .env")
+        elif "quota" in err_msg.lower() or "429" in err_msg or "rate limit" in err_msg.lower():
+            raise Exception("Rate limit hit. Wait 1 minute and try again.")
+        elif "SAFETY" in err_msg:
+            raise Exception("Message blocked by safety filter. Please rephrase.")
+        else:
+            raise Exception(f"AI service error: {err_msg[:120]}")
+
+
+# 🔥 ADD THESE (CRITICAL FOR RENDER)
 app.config["SESSION_COOKIE_SECURE"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -631,26 +743,114 @@ def mood_suggestions():
     if not mood:
         return jsonify({"error": "Mood required"}), 400
 
-    # Build prompt for mood-based suggestions
-    prompt = f"""Based on the user's current mood of "{mood}", suggest 3-5 hobbies that would be perfect for this emotional state.
+    # Map mood to profile characteristics for enhanced scoring
+    mood_mappings = {
+        "energetic": {"energy": "high", "time": "flexible"},
+        "relaxed": {"energy": "low", "goal": "relax"},
+        "creative": {"goal": "express", "interests": ["creative", "visual"]},
+        "adventurous": {"energy": "high", "interests": ["outdoor", "physical"]},
+        "social": {"personality": "extrovert", "interests": ["social"]},
+        "focused": {"energy": "moderate", "goal": "learn"},
+        "stressed": {"energy": "low", "goal": "relax"},
+        "bored": {"energy": "moderate", "goal": "express"}
+    }
 
-User profile context: {json.dumps(profile) if profile else 'No profile available'}
+    # Create enhanced profile based on mood
+    enhanced_profile = profile.copy() if profile else {}
+    if mood in mood_mappings:
+        mood_profile = mood_mappings[mood]
+        for key, value in mood_profile.items():
+            if key == "interests":
+                # Merge interests
+                existing = set(enhanced_profile.get("interests", []))
+                existing.update(value)
+                enhanced_profile["interests"] = list(existing)
+            else:
+                # Override other profile fields
+                enhanced_profile[key] = value
 
-For each suggestion, provide:
-- name: The hobby name
-- reason: Why this hobby fits their current mood (2-3 sentences)
+    # Fill in defaults for missing profile fields
+    defaults = {
+        "personality": "ambivert",
+        "goal": "express",
+        "energy": "moderate",
+        "time": "flexible",
+        "interests": []
+    }
+    for key, default_value in defaults.items():
+        if key not in enhanced_profile:
+            enhanced_profile[key] = default_value
 
-Focus on hobbies that can help with their mood - if they're stressed, suggest calming activities; if energetic, suggest active pursuits; if bored, suggest engaging activities.
+    # Use enhanced scoring algorithm to get recommendations
+    from chatbot import get_recommendations
+    recommendations = get_recommendations(enhanced_profile, top_n=5)
 
-Return as JSON array of objects with 'name' and 'reason' fields."""
+    # Convert to mood suggestions format
+    suggestions = []
+    for rec in recommendations:
+        # Create mood-appropriate reasoning
+        mood_reasoning = generate_mood_reasoning(mood, rec["name"], rec["data"])
+        suggestions.append({
+            "name": rec["name"],
+            "reason": mood_reasoning
+        })
 
-    try:
-        response_text = generate_ai_response(prompt, system_msg="You are a mood-based hobby recommender. Return only valid JSON.")
-        suggestions = json.loads(response_text.strip())
-        return jsonify({"suggestions": suggestions})
-    except Exception as e:
-        print(f"Mood suggestions error: {e}")
-        return jsonify({"error": "Failed to generate suggestions"}), 500
+    return jsonify({"suggestions": suggestions})
+
+
+def generate_mood_reasoning(mood: str, hobby_name: str, hobby_data: dict) -> str:
+    """Generate mood-specific reasoning for why a hobby fits."""
+    mood_reasons = {
+        "energetic": [
+            f"{hobby_name} is perfect for high energy - it channels your enthusiasm into productive activity.",
+            f"When you're feeling energetic, {hobby_name} provides an outlet for your vitality and keeps you engaged.",
+            f"This hobby matches your current energy level and will help you make the most of feeling pumped up."
+        ],
+        "relaxed": [
+            f"{hobby_name} is ideal for relaxation - it helps you unwind and find peace in the process.",
+            f"When you're in a calm mood, {hobby_name} enhances your sense of tranquility and mindfulness.",
+            f"This gentle activity complements your relaxed state and promotes continued well-being."
+        ],
+        "creative": [
+            f"{hobby_name} sparks creativity - it gives your imaginative side free rein to express itself.",
+            f"When you're feeling creative, {hobby_name} provides the perfect canvas for your ideas.",
+            f"This hobby nurtures your artistic impulses and helps bring your visions to life."
+        ],
+        "adventurous": [
+            f"{hobby_name} satisfies your sense of adventure - it offers excitement and new experiences.",
+            f"When you're feeling adventurous, {hobby_name} provides the thrill and discovery you crave.",
+            f"This hobby channels your exploratory spirit into meaningful and enjoyable pursuits."
+        ],
+        "social": [
+            f"{hobby_name} is great for connecting with others - it combines fun with social interaction.",
+            f"When you're in a social mood, {hobby_name} helps you build connections and share experiences.",
+            f"This hobby brings people together and enhances your social bonds."
+        ],
+        "focused": [
+            f"{hobby_name} helps maintain concentration - it provides structured, absorbing activities.",
+            f"When you're feeling focused, {hobby_name} allows you to dive deep and achieve flow state.",
+            f"This hobby supports your concentrated mindset with meaningful challenges."
+        ],
+        "stressed": [
+            f"{hobby_name} helps reduce stress - it provides calming, therapeutic activities.",
+            f"When you're feeling stressed, {hobby_name} offers relief and mental respite.",
+            f"This hobby serves as a healthy coping mechanism for managing stress levels."
+        ],
+        "bored": [
+            f"{hobby_name} combats boredom - it introduces novelty and engaging challenges.",
+            f"When you're feeling bored, {hobby_name} provides stimulation and renewed interest.",
+            f"This hobby reawakens your sense of curiosity and brings excitement back."
+        ]
+    }
+
+    reasons = mood_reasons.get(mood, [
+        f"{hobby_name} is a great match for your current mood and interests.",
+        f"This hobby aligns well with how you're feeling right now.",
+        f"{hobby_name} provides the perfect activity for your present state of mind."
+    ])
+
+    # Return a random reason or combine them
+    return reasons[0]  # For simplicity, just return the first reason
 
 
 # ── 30/60/90 DAY ROADMAP ─────────────────────────────────────────────────────
