@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ title }} — HobbyBot Profile</title>
+  <meta property="og:title"       content="{{ title }} — HobbyBot"/>
+  <meta property="og:description" content="Personalised hobby matches powered by HobbyBot AI"/>
+  <meta property="og:type"        content="website"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --p1:#7C3AED;--p2:#4F46E5;--p3:#06B6D4;
+      --grad:linear-gradient(135deg,var(--p1),var(--p2));
+      --bg:#F8F7FF;--surface:#fff;--border:#E5E3FF;
+      --text:#0F0E1A;--muted:#6B6B8A;--hint:#A8A8C0;
+    }
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+    /* HEADER */
+    .hero{
+      background:var(--grad);padding:3rem 2rem 4rem;
+      text-align:center;position:relative;overflow:hidden;
+    }
+    .hero::before{
+      content:'';position:absolute;inset:0;
+      background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .hero-logo{
+      display:inline-flex;align-items:center;gap:10px;
+      background:rgba(255,255,255,.15);backdrop-filter:blur(10px);
+      padding:8px 18px;border-radius:99px;margin-bottom:1.5rem;
+      border:1px solid rgba(255,255,255,.2);
+    }
+    .hero-logo-mark{font-size:16px;color:#fff}
+    .hero-logo-name{font-size:14px;font-weight:600;color:#fff}
+    .hero-title{
+      font-size:clamp(1.5rem,4vw,2.8rem);font-weight:800;
+      color:#fff;line-height:1.2;margin-bottom:0.75rem;
+    }
+    .hero-sub{font-size:15px;color:rgba(255,255,255,.75);margin-bottom:1.5rem}
+    .hero-pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:1.5rem}
+    .hero-pill{
+      font-size:12px;padding:5px 14px;border-radius:99px;
+      background:rgba(255,255,255,.15);color:#fff;
+      border:1px solid rgba(255,255,255,.25);
+    }
+    .hero-user{
+      display:inline-block;font-size:12px;color:rgba(255,255,255,.6);
+      background:rgba(0,0,0,.2);padding:4px 14px;border-radius:99px;
+    }
+
+    /* MAIN */
+    .main{max-width:720px;margin:0 auto;padding:2rem 1rem 4rem}
+
+    /* SECTION TITLE */
+    .section-title{
+      font-size:11px;font-weight:600;text-transform:uppercase;
+      letter-spacing:.08em;color:var(--p1);margin-bottom:1rem;
+    }
+
+    /* PROFILE PILLS */
+    .profile-grid{
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+      gap:10px;margin-bottom:2rem;
+    }
+    .profile-chip{
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:12px;padding:12px 14px;text-align:center;
+    }
+    .chip-label{font-size:10px;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+    .chip-value{font-size:13px;font-weight:600;color:var(--text);text-transform:capitalize}
+
+    /* HOBBY CARDS */
+    .cards{display:flex;flex-direction:column;gap:14px;margin-bottom:2.5rem}
+    .card{
+      background:var(--surface);border:1.5px solid var(--border);
+      border-radius:16px;padding:1.25rem 1.5rem;
+      transition:transform .15s,box-shadow .15s;
+    }
+    .card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,58,237,.1)}
+    .card.top{border-color:var(--p1);background:linear-gradient(135deg,#F9F7FF,#F0EEFF)}
+    .card-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+    .card-left{}
+    .top-label{font-size:10px;font-weight:700;color:var(--p1);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+    .card-name{font-size:17px;font-weight:700;color:var(--text)}
+    .card-pct{
+      font-size:28px;font-weight:800;
+      background:var(--grad);-webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;background-clip:text;
+      line-height:1;
+    }
+    .card-pct-label{font-size:11px;color:var(--hint);text-align:right;margin-top:2px}
+    .bar-bg{height:4px;background:var(--border);border-radius:99px;margin:10px 0;overflow:hidden}
+    .bar-fill{height:100%;background:var(--grad);border-radius:99px}
+    .card-why{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px}
+    .card-meta{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+    .meta-tag{
+      font-size:11px;padding:3px 10px;border-radius:99px;
+      background:rgba(124,58,237,.08);color:var(--p1);
+      border:1px solid rgba(124,58,237,.15);
+    }
+    .plan-title{font-size:11px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+    .plan-steps{display:flex;flex-direction:column;gap:6px}
+    .plan-step{
+      background:var(--bg);border-radius:0 10px 10px 0;
+      padding:8px 12px;font-size:12px;line-height:1.55;color:var(--text);
+      border-left:2px solid var(--p1);
+    }
+    .tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+    .tool{
+      font-size:11px;padding:3px 10px;border-radius:99px;
+      background:var(--bg);color:var(--muted);border:1px solid var(--border);
+    }
+
+    /* CTA */
+    .cta{
+      background:var(--grad);border-radius:20px;
+      padding:2.5rem 2rem;text-align:center;color:#fff;
+    }
+    .cta h2{font-size:22px;font-weight:700;margin-bottom:8px}
+    .cta p{font-size:14px;opacity:.85;margin-bottom:1.5rem;line-height:1.6}
+    .cta-btn{
+      display:inline-block;padding:13px 32px;
+      background:#fff;color:var(--p1);
+      font-size:14px;font-weight:700;border-radius:10px;
+      text-decoration:none;transition:opacity .15s;
+    }
+    .cta-btn:hover{opacity:.9}
+
+    /* FOOTER */
+    footer{text-align:center;padding:1.5rem;font-size:12px;color:var(--hint)}
+    footer a{color:var(--p1);text-decoration:none}
+
+    @media(max-width:600px){
+      .hero{padding:2rem 1rem 3rem}
+      .card-pct{font-size:22px}
+    }
+
+    @media print{
+      .cta,.cta-btn,footer{display:none}
+      .hero{background:#7C3AED;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .card{page-break-inside:avoid}
+    }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-logo">
+    <span class="hero-logo-mark">✦</span>
+    <span class="hero-logo-name">HobbyBot</span>
+  </div>
+  <h1 class="hero-title">{{ title }}</h1>
+  <p class="hero-sub">Personalised hobby matches · AI-powered discovery</p>
+  <div class="hero-pills">
+    <span class="hero-pill">{{ profile.personality | capitalize }}</span>
+    <span class="hero-pill">{{ profile.goal | capitalize }} goal</span>
+    <span class="hero-pill">{{ profile.time }} time</span>
+    <span class="hero-pill">{{ profile.energy }} energy</span>
+  </div>
+  {% if email_hint %}
+  <div class="hero-user">{{ email_hint }}'s profile</div>
+  {% endif %}
+</div>
+
+<div class="main">
+
+  <div class="section-title" style="margin-top:1.5rem">Personality snapshot</div>
+  <div class="profile-grid">
+    <div class="profile-chip">
+      <div class="chip-label">Personality</div>
+      <div class="chip-value">{{ profile.personality }}</div>
+    </div>
+    <div class="profile-chip">
+      <div class="chip-label">Goal</div>
+      <div class="chip-value">{{ profile.goal }}</div>
+    </div>
+    <div class="profile-chip">
+      <div class="chip-label">Time</div>
+      <div class="chip-value">{{ profile.time }}</div>
+    </div>
+    <div class="profile-chip">
+      <div class="chip-label">Energy</div>
+      <div class="chip-value">{{ profile.energy }}</div>
+    </div>
+  </div>
+
+  <div class="section-title">Top hobby matches</div>
+  <div class="cards">
+    {% for rec in recs %}
+    <div class="card {% if loop.first %}top{% endif %}">
+      <div class="card-row">
+        <div class="card-left">
+          {% if loop.first %}<div class="top-label">Best match</div>{% endif %}
+          <div class="card-name">{{ rec.name }}</div>
+        </div>
+        <div>
+          <div class="card-pct">{{ rec.score }}%</div>
+          <div class="card-pct-label">match</div>
+        </div>
+      </div>
+
+      <div class="bar-bg">
+        <div class="bar-fill" style="width:{{ rec.score }}%"></div>
+      </div>
+
+      <div class="card-why">{{ rec.data.why_it_fits }}</div>
+
+      <div class="card-meta">
+        <span class="meta-tag">{{ rec.data.difficulty }}</span>
+        <span class="meta-tag">{{ rec.data.time_needed }}</span>
+        <span class="meta-tag">{{ rec.data.cost }}</span>
+      </div>
+
+      <div class="plan-title">7-day starter plan</div>
+      <div class="plan-steps">
+        {% for step in rec.data.seven_day_plan %}
+        <div class="plan-step">{{ step }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="tools">
+        {% for tool in rec.data.tools %}
+        <span class="tool">{{ tool }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="cta">
+    <h2>Find your own perfect hobby</h2>
+    <p>Answer 5 questions and get a personalised match with a 7-day starter plan — free, no credit card needed.</p>
+    <a href="/" class="cta-btn">Try HobbyBot free →</a>
+  </div>
+
+</div>
+
+<footer>
+  Created with <a href="/">HobbyBot</a> · AI-powered hobby discovery
+</footer>
+
+</body>
+</html>

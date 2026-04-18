@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HobbyBot — Find Your Perfect Hobby</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/style.css"/>
+  <style id="print-styles">
+    @media print {
+      .sidebar,.chat-bar,.opts-tray,.input-dock,.login-page,
+      .modal-bg,#toast,.bar-actions{display:none!important}
+      .app{display:block!important}
+      .main-panel,.chat-view,.msgs{display:block!important;overflow:visible!important;height:auto!important}
+      body{height:auto!important;overflow:visible!important;background:#fff!important;color:#000!important}
+      .bubble{background:#f5f5f5!important;border:1px solid #ddd!important;color:#000!important;page-break-inside:avoid;margin-bottom:8px}
+      .msg.u .bubble{background:#e8e4ff!important;color:#000!important}
+      .av{display:none!important}
+      .msg{gap:0!important}
+      .hcard{page-break-inside:avoid;border:1px solid #ddd!important}
+      @page{margin:2cm;size:A4}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ LOGIN PAGE ═══════════════════════════ -->
+<div id="login-page" class="login-page">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <div class="login-brand">
+    <div class="brand-logo">
+      <span class="brand-mark">✦</span>
+      <span class="brand-name">HobbyBot</span>
+    </div>
+    <h1 class="brand-headline">Discover the hobby<br/>you were born for.</h1>
+    <p class="brand-tagline">
+      Chat naturally with AI. Get a personalised hobby match,
+      7-day starter plan, and a real path to turn passion into income.
+    </p>
+    <div class="brand-pills">
+      <span class="brand-pill">🎨 Digital Art</span>
+      <span class="brand-pill">✍️ Writing</span>
+      <span class="brand-pill">🎵 Music</span>
+      <span class="brand-pill">📷 Photography</span>
+      <span class="brand-pill">🛠️ DIY Crafts</span>
+    </div>
+    <div class="brand-stats">
+      <div class="stat"><div class="stat-num">5</div><div class="stat-lbl">Questions</div></div>
+      <div class="stat-div"></div>
+      <div class="stat"><div class="stat-num">AI</div><div class="stat-lbl">Powered chat</div></div>
+      <div class="stat-div"></div>
+      <div class="stat"><div class="stat-num">7-day</div><div class="stat-lbl">Starter plan</div></div>
+    </div>
+  </div>
+
+  <div class="login-form-wrap">
+    <div class="auth-card" id="card-email">
+      <div class="card-eyebrow">Get started — it's free</div>
+      <h2 class="card-title">Sign in to HobbyBot</h2>
+      <p class="card-sub">We'll send a one-time code. After that, you stay logged in for 30 days.</p>
+      <div class="field-wrap">
+        <label class="field-label">Email address</label>
+        <input type="email" id="email-input" class="field-input"
+          placeholder="you@example.com" onkeydown="if(event.key==='Enter')sendOtp()"/>
+        <div class="field-err" id="email-err"></div>
+      </div>
+      <button class="btn-cta" id="send-btn" onclick="sendOtp()">
+        <span id="send-btn-text">Send verification code</span>
+        <span class="btn-arrow">→</span>
+      </button>
+      <p class="card-fine">No password. No spam. One code, then you're in for 30 days.</p>
+    </div>
+
+    <div class="auth-card hidden" id="card-otp">
+      <div class="card-eyebrow">Step 2 of 2</div>
+      <h2 class="card-title">Check your inbox</h2>
+      <p class="card-sub">6-digit code sent to <strong id="otp-email-display" class="highlight-email"></strong></p>
+      <div class="otp-row" id="otp-boxes"></div>
+      <div class="field-err" id="otp-err"></div>
+      <button class="btn-cta" id="verify-btn" onclick="verifyOtp()">
+        <span id="verify-btn-text">Verify &amp; enter HobbyBot</span>
+        <span class="btn-arrow">→</span>
+      </button>
+      <div class="otp-links">
+        <button class="soft-link" onclick="resendOtp()">Resend code</button>
+        <span class="link-sep">·</span>
+        <button class="soft-link" onclick="showCard('card-email')">Change email</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MAIN APP ══════════════════════════════ -->
+<div id="app" class="app hidden">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-top">
+      <div class="sb-logo">
+        <span class="sb-mark">✦</span>
+        <span class="sb-name">HobbyBot</span>
+      </div>
+      <button class="new-btn" onclick="startNewChat()" title="New chat">+</button>
+    </div>
+    <div class="sb-search-wrap">
+      <input class="sb-search" placeholder="Search chats…" oninput="filterChats(this.value)"/>
+    </div>
+    <div class="chat-list" id="chat-list"></div>
+    <div class="sb-foot">
+      <div class="user-row">
+        <div class="u-av" id="u-av">?</div>
+        <div class="u-info">
+          <div class="u-name"  id="u-name">—</div>
+          <div class="u-email" id="u-email">—</div>
+        </div>
+        <button class="icon-btn" id="theme-btn" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
+        <button class="icon-btn" onclick="signOut()" title="Sign out">⏻</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN PANEL -->
+  <main class="main-panel">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">✦</div>
+      <h2 class="empty-h">What hobby fits you?</h2>
+      <p class="empty-p">Start a new AI-powered discovery session or pick a recent chat.</p>
+      <button class="btn-cta" style="max-width:220px;margin:0 auto" onclick="startNewChat()">
+        + Start discovery <span class="btn-arrow">→</span>
+      </button>
+    </div>
+
+    <div class="chat-view hidden" id="chat-view">
+      <!-- Top bar -->
+      <div class="chat-bar">
+        <div>
+          <div class="chat-bar-title" id="chat-bar-title">New chat</div>
+          <div class="chat-bar-meta"  id="chat-bar-meta"></div>
+        </div>
+        <div class="bar-actions">
+          <button class="icon-btn" onclick="exportPDF()"    title="Export PDF">📄</button>
+          <button class="icon-btn" onclick="shareProfile()" title="Share profile">🔗</button>
+          <button class="icon-btn" onclick="initiateSave()" title="Save">💾</button>
+          <button class="icon-btn" onclick="deleteChat()"   title="Delete">🗑</button>
+        </div>
+      </div>
+
+      <!-- Messages -->
+      <div class="msgs" id="msgs"></div>
+
+      <!-- Quiz option buttons (shown only during quiz) -->
+      <div class="opts-tray" id="opts-tray"></div>
+
+      <!-- ALWAYS-ON input dock -->
+      <div class="input-dock">
+        <div class="hints-row" id="hints-row"></div>
+        <div class="input-row">
+          <textarea id="msg-input" class="msg-input"
+            placeholder="Ask anything — or click an option above…"
+            rows="1"
+            onkeydown="onKey(event)"
+            oninput="autoGrow(this)"></textarea>
+          <button class="send-btn" id="send-msg-btn" onclick="sendMessage()">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 13V3M3 8l5-5 5 5" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- SAVE OTP MODAL -->
+<div class="modal-bg hidden" id="save-modal">
+  <div class="modal-box">
+    <button class="modal-x" onclick="closeSaveModal()">✕</button>
+    <div style="font-size:26px;margin-bottom:10px">💾</div>
+    <h3 class="modal-title">Confirm to save</h3>
+    <p class="modal-sub">Enter the 6-digit code we sent to your email</p>
+    <div class="otp-row" id="save-otp-boxes"></div>
+    <div class="field-err" id="save-otp-err"></div>
+    <button class="btn-cta" onclick="confirmSave()">
+      Save this chat <span class="btn-arrow">→</span>
+    </button>
+  </div>
+</div>
+
+<!-- HOBBY DETAIL MODAL -->
+<div class="modal-bg hidden" id="hobby-modal" onclick="closeHobbyModal(event)">
+  <div class="modal-box modal-wide" onclick="event.stopPropagation()">
+    <button class="modal-x" onclick="closeHobbyModal()">✕</button>
+    <div id="hobby-content"></div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+<div class="share-popup hidden" id="share-popup">
+  <div class="share-box">
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px">Share your profile</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input id="share-url" class="share-input" readonly/>
+      <button class="share-copy-btn" onclick="copyShareUrl()">Copy</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">Anyone with this link can view your hobby matches</div>
+    <button onclick="closeSharePopup()" style="margin-top:10px;width:100%;padding:7px;border:1px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;font-size:12px;color:var(--muted)">Close</button>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
